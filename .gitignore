@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# 数据（原始/中间数据体积大，不入库）
+data/
+*.csv
+*.parquet
+*.pkl
+*.npz
+
+# 其它
+.DS_Store
+*.log
