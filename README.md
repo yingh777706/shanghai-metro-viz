@@ -30,8 +30,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yingh777706/ShanghaiMetro-Visualization.git
-cd ShanghaiMetro-Visualization
+git clone https://github.com/yingh777706/shanghai-metro-viz.git
+cd shanghai-metro-viz
 
 # 创建虚拟环境并安装依赖
 python -m venv .venv
