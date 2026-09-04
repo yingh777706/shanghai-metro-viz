@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | pzq | [@Panzhongqiong](https://github.com/Panzhongqiong) | 数据工程 | 数据下载清洗、行程识别/OD 配对、构建共享分析数据集 |
 | 2 | hy | [@yingh777706](https://github.com/yingh777706) | 业务分析 | 全局描述性统计、时间/空间维度客流规律 |
-| 3 | lks | [@lv-keshan](https://github.com/lv-keshan) | 空间可视化 | 站点线路底图、热力图、OD 流向图、动态可视化 |
+| 3 | lks | [@kaishuiliang](https://github.com/kaishuiliang) | 空间可视化 | 站点线路底图、热力图、OD 流向图、动态可视化 |
 | 4 | ly | [@lyy11234](https://github.com/lyy11234) | 统计可视化 | 标准统计图表、出行模式提炼、统一视觉风格 |
 | 5 | ycl | [@guaovo](https://github.com/guaovo) | 算法 + 总装 | K-Means 站点聚类、客流预测、报告/PPT 整合交付 |
 
