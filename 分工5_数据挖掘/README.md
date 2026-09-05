@@ -1,7 +1,7 @@
 # 数据挖掘说明文档（分工5 · 袁楚帘）
 
 本文档说明本项目中数据挖掘部分的**算法原理、代码使用方式、输入输出与结果解读**。
-数据底座来自分工1输出的标准化数据集（见 `docs/数据预处理说明文档.md`），
+数据底座来自分工1输出的标准化数据集（清洗规则见《数据预处理说明文档》，暂存于 `readme合集（之后合并）/`，待分工1 迁入后更新此引用），
 本模块不再重复数据清洗工作。
 
 ---
@@ -31,8 +31,8 @@ pip install -r requirements.txt
 ### 3.1 运行方式
 
 ```bash
-cd code
-python kmeans_station_clustering.py      # 约 1~3 分钟
+# 在项目根目录执行
+python code/分工5/kmeans_station_clustering.py      # 约 1~3 分钟
 ```
 
 ### 3.2 方法与关键设计
@@ -64,7 +64,7 @@ python kmeans_station_clustering.py      # 约 1~3 分钟
 
 - 最终 **K=5** 时 SSE = 4028.1，**轮廓系数 = 0.3070**；
   K=3 时轮廓系数最高（0.3734），但结合任务对 5 类站点的要求与 K>5 后 SSE 下降趋缓（肘部），
-  选择 K=5 作为最终聚类数（选 K 详见 `输出结果/聚类/表1_K值评估指标.csv` 与图1）。
+  选择 K=5 作为最终聚类数（选 K 详见 `分工5_数据挖掘/聚类/表1_K值评估指标.csv` 与图1）。
 - 图3 分时客流画像验证了聚类有效性：通勤居住站呈"早进晚出"双峰，
   就业办公站呈"早出晚进"反相双峰，综合枢纽站全天高位，
   郊区低频站全天平缓——与城市轨道客流规律一致。
@@ -72,7 +72,7 @@ python kmeans_station_clustering.py      # 约 1~3 分钟
 ### 3.4 输出文件
 
 ```
-输出结果/聚类/
+分工5_数据挖掘/聚类/
 ├── 表1_K值评估指标.csv      各K值的SSE与轮廓系数
 ├── 表2_聚类结果表.csv       302站完整标签 + 日均客流 + 高峰占比 + 周末比
 ├── 表3_聚类结果统计表.csv   各类型站点数与平均客流
@@ -89,8 +89,8 @@ python kmeans_station_clustering.py      # 约 1~3 分钟
 ### 4.1 运行方式
 
 ```bash
-cd code
-python arima_station_forecast.py     # 约 5~15 分钟（时间序列网格搜索较慢）
+# 在项目根目录执行
+python code/分工5/arima_station_forecast.py     # 约 5~15 分钟（时间序列网格搜索较慢）
 ```
 
 ### 4.2 方法与关键设计
@@ -111,7 +111,7 @@ python arima_station_forecast.py     # 约 5~15 分钟（时间序列网格搜�
 
 ### 4.3 结果解读要点
 
-- 实际误差数字见 `输出结果/预测/表6_预测误差指标.csv`（运行后生成），
+- 实际误差数字见 `分工5_数据挖掘/预测/表6_预测误差指标.csv`（运行后生成），
   预测对比曲线见图4。
 - **主要结论**：季节 SARIMA 的 MAE 约为普通 ARIMA 的一半
   （人民广场 1204 vs 2185 人次/小时；莘庄 868 vs 2027）——
@@ -128,7 +128,7 @@ python arima_station_forecast.py     # 约 5~15 分钟（时间序列网格搜�
 ### 4.4 输出文件
 
 ```
-输出结果/预测/
+分工5_数据挖掘/预测/
 ├── 表4_平稳性检验结果.csv   ADF统计量、p值、选定的d
 ├── 表5_模型定阶结果.csv     两类模型的最优阶数
 ├── 表6_预测误差指标.csv     三种方法的 MAE/MSE/RMSE/MAPE
@@ -146,4 +146,4 @@ python arima_station_forecast.py     # 约 5~15 分钟（时间序列网格搜�
 - 两个脚本均分块读取大文件（每块 50 万行），8GB 内存电脑可运行；
 - 运行顺序无依赖：聚类与预测脚本可独立运行；
   若想换预测站点，修改 `arima_station_forecast.py` 顶部 `TARGETS` 字典
-  （键为 stationID，值站点名可在 `processed_data/station_info.csv` 中查询）。
+  （键为 stationID，值站点名可在 `station_info.csv` 中查询，用 `common.find_data()` 定位）。
