@@ -16,7 +16,6 @@
   （依赖见根目录 requirements.txt：pandas numpy scikit-learn matplotlib）
 """
 
-from pathlib import Path
 import sys
 
 import matplotlib
@@ -30,22 +29,13 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 # ---------------------------------------------------------------- 路径配置
-SCRIPT_DIR = Path(__file__).resolve().parent          # code/ 目录
-ROOT = SCRIPT_DIR.parent                              # 项目根目录
-
-
-def find_data(name: str) -> Path:
-    """在 data/ 与 processed_data/ 两个目录中查找数据文件（本地与仓库通用）。"""
-    for d in (ROOT / "data", ROOT / "processed_data"):
-        if (d / name).exists():
-            return d / name
-    return ROOT / "processed_data" / name    # 都没找到时返回默认路径，报错更直观
-
+# 统一的数据文件定位与项目根目录（见 code/common.py）
+from common import PROJECT_ROOT, find_data
 
 DATA_FILE = find_data("std_10min_inout.csv")
 CAL_FILE = find_data("workday_calendar.csv")
 STATION_FILE = find_data("station_info.csv")
-OUT_DIR = ROOT / "输出结果" / "聚类"
+OUT_DIR = PROJECT_ROOT / "输出结果" / "聚类"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 中文绘图字体（Windows 自带微软雅黑）

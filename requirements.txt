@@ -1,7 +1,16 @@
 # 上海地铁数据分析及可视化 - Python 依赖清单
 # 安装方式：pip install -r requirements.txt
+
+# 核心（数据读取 / 统计分析 / 数据挖掘）
 pandas>=2.0
 numpy>=1.24
 scikit-learn>=1.3
 statsmodels>=0.14
 matplotlib>=3.7
+
+# 空间可视化（分工3）
+geopandas>=0.14
+folium>=0.15
+contextily>=1.6
+pyproj>=3.6
+shapely>=2.0

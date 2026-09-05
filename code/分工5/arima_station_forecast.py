@@ -20,7 +20,6 @@
 
 import sys
 import warnings
-from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
@@ -34,20 +33,11 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 warnings.filterwarnings("ignore")   # 忽略拟合过程中的收敛警告，保持输出整洁
 sys.stdout.reconfigure(encoding="utf-8")   # 防止 Windows 控制台中文乱码
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-ROOT = SCRIPT_DIR.parent
-
-
-def find_data(name: str) -> Path:
-    """在 data/ 与 processed_data/ 两个目录中查找数据文件（本地与仓库通用）。"""
-    for d in (ROOT / "data", ROOT / "processed_data"):
-        if (d / name).exists():
-            return d / name
-    return ROOT / "processed_data" / name    # 都没找到时返回默认路径，报错更直观
-
+# 统一的数据文件定位与项目根目录（见 code/common.py）
+from common import PROJECT_ROOT, find_data
 
 DATA_FILE = find_data("std_10min_inout.csv")
-OUT_DIR = ROOT / "输出结果" / "预测"
+OUT_DIR = PROJECT_ROOT / "输出结果" / "预测"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]

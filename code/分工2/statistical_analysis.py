@@ -27,32 +27,15 @@ import numpy as np
 import pandas as pd
 
 # ---------------------------------------------------------------- 路径配置
-SCRIPT_DIR = Path(__file__).resolve().parent          # code/ 目录
-ROOT = SCRIPT_DIR.parent                              # 项目根目录
-
-# 数据可能存放的目录（按优先级查找，本地与仓库通用）
-CANDIDATE_DIRS = (
-    ROOT / "data",
-    ROOT / "processed_data",
-    ROOT / "docs" / "processed_data",
-    ROOT / "docs" / "data",
-)
-
-
-def find_data(name: str) -> Path:
-    """在多个候选目录中查找数据文件，找不到时返回默认路径以便报错更直观。"""
-    for d in CANDIDATE_DIRS:
-        if (d / name).exists():
-            return d / name
-    return ROOT / "processed_data" / name
-
+# 统一的数据文件定位与项目根目录（见 code/common.py）
+from common import PROJECT_ROOT, find_data
 
 DATA_INOUT = find_data("std_10min_inout.csv")
 DATA_OD = find_data("std_10min_od.csv")
 DATA_STATION = find_data("station_info.csv")
 DATA_CAL = find_data("workday_calendar.csv")
 
-OUT_DIR = ROOT / "输出结果" / "统计分析"
+OUT_DIR = PROJECT_ROOT / "输出结果" / "统计分析"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
