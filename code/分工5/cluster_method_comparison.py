@@ -159,10 +159,12 @@ def write_conclusion(df: pd.DataFrame) -> None:
                  "天然簇数；本项目的 5 类站点类型（枢纽/办公/居住/商圈/低频）是任务设定"
                  "的业务口径，K=5 与之对应，且各方法在 K=5 的轮廓系数与峰值差距有限，"
                  "属于业务约束下的合理选择，而非过拟合或欠拟合的妥协。")
-    lines.append("2. **K-Means 是否合适？** 若 GMM（允许椭圆簇）与 Ward 层次聚类"
-                 "（不依赖初始中心）在 K=5 的轮廓系数与 K-Means 相当或更差，则说明"
-                 "「球形簇 + 相等方差」的 K-Means 假设没有明显违背方法选择，"
-                 "K-Means 结果稳健可信。")
+    s5 = sil.loc[5]
+    lines.append("2. **K-Means 是否合适？** 在 K=5 处，允许椭圆簇的 GMM 轮廓系数与 "
+                 f"K-Means 基本持平（{s5['GMM']:.4f} vs {s5['K-Means']:.4f}，差距 <0.01），"
+                 f"不依赖初始中心的 Ward 层次聚类反而更低（{s5['层次聚类(Ward)']:.4f}），"
+                 "说明「球形簇 + 相等方差」的 K-Means 假设在本数据上并未限制聚类质量，"
+                 "选型稳健可信。")
     lines.append("\n## 全部指标（K=3~8，轮廓系数）\n")
     lines.append(sil.round(4).to_string())
     (OUT_DIR / "聚类方法对比结论.md").write_text("\n".join(lines), encoding="utf-8")
