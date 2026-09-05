@@ -30,6 +30,8 @@ from sklearn.preprocessing import StandardScaler
 
 # ---------------------------------------------------------------- 路径配置
 # 统一的数据文件定位与项目根目录（见 code/common.py）
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # 使 code/ 子目录脚本可 import common
 from common import PROJECT_ROOT, find_data
 
 DATA_FILE = find_data("std_10min_inout.csv")
