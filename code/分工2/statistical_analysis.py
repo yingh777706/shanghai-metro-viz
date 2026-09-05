@@ -30,6 +30,7 @@ import pandas as pd
 # 统一的数据文件定位与项目根目录（见 code/common.py）
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # 使 code/ 子目录脚本可 import common
 from common import PROJECT_ROOT, find_data
+from station_name_cn import NAME_CN      # 站点中文名映射（本目录同目录）
 
 DATA_INOUT = find_data("std_10min_inout.csv")
 DATA_OD = find_data("std_10min_od.csv")
@@ -178,6 +179,7 @@ def station_rank(flow: pd.DataFrame) -> dict:
     station.columns = ["stationID", "总进站量"]
     station = station.merge(load_small(DATA_STATION)[["stationID", "name"]],
                             on="stationID", how="left")
+    station["中文名"] = station["stationID"].map(NAME_CN)
     station = station.sort_values("总进站量", ascending=False).reset_index(drop=True)
     station.to_csv(OUT_DIR / "表2_站点客流排名.csv", index=False, encoding="utf-8-sig")
     top = station.head(10)
