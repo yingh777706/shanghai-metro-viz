@@ -37,7 +37,7 @@ from common import PROJECT_ROOT, find_data
 DATA_FILE = find_data("std_10min_inout.csv")
 CAL_FILE = find_data("workday_calendar.csv")
 STATION_FILE = find_data("station_info.csv")
-OUT_DIR = PROJECT_ROOT / "输出结果" / "聚类"
+OUT_DIR = PROJECT_ROOT / "分工5_数据挖掘" / "聚类"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 中文绘图字体（Windows 自带微软雅黑）

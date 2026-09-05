@@ -36,7 +36,7 @@ DATA_OD = find_data("std_10min_od.csv")
 DATA_STATION = find_data("station_info.csv")
 DATA_CAL = find_data("workday_calendar.csv")
 
-OUT_DIR = PROJECT_ROOT / "输出结果" / "统计分析"
+OUT_DIR = PROJECT_ROOT / "分工2_统计分析"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]

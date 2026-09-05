@@ -39,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # 使 code/ �
 from common import PROJECT_ROOT, find_data
 
 DATA_FILE = find_data("std_10min_inout.csv")
-OUT_DIR = PROJECT_ROOT / "输出结果" / "预测"
+OUT_DIR = PROJECT_ROOT / "分工5_数据挖掘" / "预测"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
