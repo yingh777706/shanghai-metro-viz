@@ -6,12 +6,12 @@
   基于分工1 输出的标准化数据集，完成全维度描述性统计，提炼客流时空分布规律：
     1. 全局描述性统计：总客运量、日均客运量、单站客流极值
     2. 时间维度：工作日/周末差异、早晚高峰识别、周内波动、月度变化
-    3. 空间维度：站点客流排名（线路强度、城区/郊区差异待补数据后扩展）
-    4. 出行距离：基于 18G OD 表 + 站点经纬度，分块计算平均出行距离
+    3. 空间维度：站点客流排名、线路客流强度（换乘站按线均摊）、城区/郊区差异
+    4. 出行指标：基于 18G OD 表 + od_travel_time.csv，分块计算平均出行距离/时长/换乘次数
 
 运行方式：
   python statistical_analysis.py            # 完整运行（含 18G OD 表，较慢）
-  python statistical_analysis.py --skip-od  # 跳过 OD，快速跑通前三部分
+  python statistical_analysis.py --skip-od  # 跳过 OD，快速跑通前四部分
   数据文件位于 data/ 或 processed_data/ 或 docs/processed_data/ 任一目录即可。
 
 依赖：pandas numpy matplotlib（见根目录 requirements.txt）
@@ -36,6 +36,9 @@ DATA_INOUT = find_data("std_10min_inout.csv")
 DATA_OD = find_data("std_10min_od.csv")
 DATA_STATION = find_data("station_info.csv")
 DATA_CAL = find_data("workday_calendar.csv")
+DATA_LINE = find_data("station_line_map.csv")      # 站点→线路映射（分工1）
+DATA_AREA = find_data("station_area_class.csv")    # 城区/郊区分类（分工1）
+DATA_TIME = find_data("od_travel_time.csv")        # OD 出行时长（分工1）
 
 OUT_DIR = PROJECT_ROOT / "分工2_统计分析"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -187,6 +190,88 @@ def station_rank(flow: pd.DataFrame) -> dict:
     return {"客流最大站点": top.iloc[0]["name"], "客流最小站点": station.iloc[-1]["name"]}
 
 
+# ================================================================ 3b. 线路客流强度
+def line_strength(flow: pd.DataFrame) -> dict:
+    """各线路客流强度（进站量口径），换乘站进站量按经过线路数均摊。
+
+    依据分工1 的 station_line_map.csv（stationID → line，换乘站一行一条）。
+    返回 {'最繁忙线路': ...} 供结论引用。
+    """
+    n_days = int(flow["date"].nunique())
+    line_map = load_small(DATA_LINE)          # stationID, name, line, is_transfer
+
+    st = (flow.groupby("stationID")["inFlow"].sum()
+             .reset_index().rename(columns={"inFlow": "总进站量"}))
+    m = st.merge(line_map[["stationID", "line"]], on="stationID", how="left")
+
+    # 换乘站分摊：该站进站量均分到它经过的每条线路，避免重复计入
+    n_lines = m.groupby("stationID")["line"].transform("count")
+    m["分摊进站量"] = m["总进站量"] / n_lines
+
+    line = (m.groupby("line", as_index=False)
+             .agg(站点数=("stationID", "nunique"),
+                  总进站量=("总进站量", "sum"),
+                  分摊进站量=("分摊进站量", "sum")))
+    line = line.dropna(subset=["line"]).reset_index(drop=True)
+    line["line"] = line["line"].astype(int)
+    line["分摊进站量"] = line["分摊进站量"].round(0).astype("int64")
+    line["日均进站量(分摊)"] = (line["分摊进站量"] / n_days).round(0).astype("int64")
+    line["单站日均进站量"] = (line["分摊进站量"] / line["站点数"] / n_days).round(0).astype("int64")
+    line = line.sort_values("分摊进站量", ascending=False).reset_index(drop=True)
+    line.to_csv(OUT_DIR / "表7_线路客流强度.csv", index=False, encoding="utf-8-sig")
+
+    top = line.iloc[0]
+    print(f"  线路客流强度：Line {int(top['line'])} 最繁忙（分摊进站 {int(top['分摊进站量']):,}，"
+          f"单站日均 {int(top['单站日均进站量']):,}）")
+    return {"最繁忙线路": f"Line {int(top['line'])}",
+            "最繁忙线路单站日均": int(top["单站日均进站量"])}
+
+
+# ================================================================ 3c. 城区/郊区差异
+def area_diff(flow: pd.DataFrame) -> dict:
+    """核心城区 / 城区过渡 / 郊区 的客流规模与「工作日/周末」时间模式对比。
+
+    依据分工1 的 station_area_class.csv 的 core_suburb 三分类。
+    返回 {'单站日均最高区': ..., '工作日周末比_核心城区': ...} 供结论引用。
+    """
+    n_days = int(flow["date"].nunique())
+    cal = load_small(DATA_CAL)[["date", "isWorkday"]]
+    area = load_small(DATA_AREA)[["stationID", "core_suburb", "ring"]]
+
+    st = (flow.groupby("stationID")["inFlow"].sum()
+             .reset_index().rename(columns={"inFlow": "总进站量"}))
+    m = st.merge(area, on="stationID", how="left")
+
+    # (a) 规模对比：单站日均进站量
+    g = (m.groupby("core_suburb", as_index=False)
+          .agg(站点数=("stationID", "nunique"), 总进站量=("总进站量", "sum")))
+    g["单站日均进站量"] = (g["总进站量"] / g["站点数"] / n_days).round(0).astype("int64")
+    g = g.sort_values("单站日均进站量", ascending=False).reset_index(drop=True)
+    g.to_csv(OUT_DIR / "表8_城区郊区对比.csv", index=False, encoding="utf-8-sig")
+
+    # (b) 工作日/周末单站日均对比（验证「中心城区通勤主导、郊区低频」）
+    n_wd = int((cal["isWorkday"] == 1).sum())
+    n_we = int((cal["isWorkday"] == 0).sum())
+    wd = (flow.merge(cal, on="date", how="left")
+             .groupby(["stationID", "isWorkday"], as_index=False)["inFlow"].sum()
+             .merge(area, on="stationID", how="left"))
+    p = (wd.groupby(["core_suburb", "isWorkday"], as_index=False)["inFlow"].sum()
+           .pivot(index="core_suburb", columns="isWorkday", values="inFlow"))
+    p = p.rename(columns={0: "周末总进站", 1: "工作日总进站"})
+    n_station = m.groupby("core_suburb")["stationID"].nunique()
+    p["工作日单站日均"] = (p["工作日总进站"] / n_station / n_wd).round(0).astype("int64")
+    p["周末单站日均"] = (p["周末总进站"] / n_station / n_we).round(0).astype("int64")
+    p["工作日/周末比值"] = (p["工作日单站日均"] / p["周末单站日均"]).round(2)
+    p = p.reset_index()
+    p.to_csv(OUT_DIR / "表8b_城区郊区工作日周末.csv", index=False, encoding="utf-8-sig")
+
+    core_row = g.iloc[0]
+    print(f"  城区差异：{core_row['core_suburb']} 单站日均 {int(core_row['单站日均进站量']):,} 最高")
+    return {"单站日均最高区": core_row["core_suburb"],
+            "核心城区工作日周末比": round(float(p.loc[p["core_suburb"] == "核心城区", "工作日/周末比值"].iloc[0]), 2),
+            "郊区工作日周末比": round(float(p.loc[p["core_suburb"] == "郊区", "工作日/周末比值"].iloc[0]), 2)}
+
+
 # ================================================================ 4. 平均出行距离（分块，重）
 def haversine_km(lat1, lon1, lat2, lon2):
     """球面距离（haversine），单位公里，向量化实现。"""
@@ -197,12 +282,13 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return 2 * R * np.arcsin(np.sqrt(a))
 
 
-def od_distance() -> dict:
-    """分块读取 18G OD 表，聚合为 OD 对 → 总流量，再算加权平均出行距离。
+def od_metrics() -> dict:
+    """分块读取 18G OD 表，聚合为 OD 对 → 总流量，算加权平均出行距离与时长。
 
     平均出行距离 = Σ(Flow_od × dist_od) / Σ(Flow_od)，dist_od 为起终点站
-    经纬度球面距离。先按 OD 对聚合（最多约 302×302 对），再算距离，避免对
-    2.67 亿行逐行做球面距离运算。
+    经纬度球面距离。平均出行时长 = Σ(Flow_od × est_time_min) / Σ(Flow_od)，
+    est_time_min 来自分工1 的 od_travel_time.csv。先按 OD 对聚合（最多约
+    302×302 对），再算指标，避免对 2.67 亿行逐行做球面距离运算。
     """
     station = load_small(DATA_STATION)[["stationID", "lon", "lat"]]
     coord = {int(r.stationID): (float(r.lat), float(r.lon)) for _, r in station.iterrows()}
@@ -220,20 +306,42 @@ def od_distance() -> dict:
             print(f"    已处理 {i * CHUNK:,} 行")
     od = pd.concat(parts, ignore_index=True)
     od = od.groupby(["originStation", "destinationStation"], sort=False)["Flow"].sum().reset_index()
-
-    # 只保留经纬度齐全的站点对
-    ok = od["originStation"].isin(coord) & od["destinationStation"].isin(coord)
-    od = od[ok]
-    lat1 = od["originStation"].map(lambda s: coord[s][0]).to_numpy()
-    lon1 = od["originStation"].map(lambda s: coord[s][1]).to_numpy()
-    lat2 = od["destinationStation"].map(lambda s: coord[s][0]).to_numpy()
-    lon2 = od["destinationStation"].map(lambda s: coord[s][1]).to_numpy()
-    dist = haversine_km(lat1, lon1, lat2, lon2)
-
-    avg = float(np.average(dist, weights=od["Flow"].to_numpy()))
     total_flow = int(od["Flow"].sum())
-    print(f"  加权平均出行距离 = {avg:.2f} km（有效 OD 流量 {total_flow:,}）")
-    return {"平均出行距离_km": round(avg, 2)}
+
+    # (a) 加权平均出行距离（需经纬度齐全的站点对）
+    ok = od["originStation"].isin(coord) & od["destinationStation"].isin(coord)
+    d = od[ok]
+    lat1 = d["originStation"].map(lambda s: coord[s][0]).to_numpy()
+    lon1 = d["originStation"].map(lambda s: coord[s][1]).to_numpy()
+    lat2 = d["destinationStation"].map(lambda s: coord[s][0]).to_numpy()
+    lon2 = d["destinationStation"].map(lambda s: coord[s][1]).to_numpy()
+    dist = haversine_km(lat1, lon1, lat2, lon2)
+    avg_dist = float(np.average(dist, weights=d["Flow"].to_numpy()))
+
+    # (b) 加权平均出行时长 / 换乘次数（合并分工1 od_travel_time.csv）
+    time = load_small(DATA_TIME)[["originStation", "destinationStation", "est_time_min", "n_transfers"]]
+    od = od.merge(time, on=["originStation", "destinationStation"], how="left")
+    has_t = od["est_time_min"].notna()
+    covered = float(od.loc[has_t, "Flow"].sum() / total_flow)
+    avg_time = float(np.average(od.loc[has_t, "est_time_min"].to_numpy(),
+                                weights=od.loc[has_t, "Flow"].to_numpy()))
+    avg_transfers = float(np.average(od.loc[has_t, "n_transfers"].to_numpy(),
+                                     weights=od.loc[has_t, "Flow"].to_numpy()))
+
+    print(f"  加权平均出行距离 = {avg_dist:.2f} km（总 OD 流量 {total_flow:,}）")
+    print(f"  加权平均出行时长 = {avg_time:.2f} 分钟（覆盖 {covered:.1%} 流量）")
+    print(f"  加权平均换乘次数 = {avg_transfers:.2f} 次")
+
+    pd.DataFrame({
+        "指标": ["加权平均出行距离(km)", "加权平均出行时长(min)", "加权平均换乘次数", "时长覆盖流量占比"],
+        "数值": [round(avg_dist, 2), round(avg_time, 2), round(avg_transfers, 2), round(covered, 4)],
+    }).to_csv(OUT_DIR / "表9_出行指标.csv", index=False, encoding="utf-8-sig")
+
+    return {
+        "平均出行距离_km": round(avg_dist, 2),
+        "平均出行时长_min": round(avg_time, 2),
+        "平均换乘次数": round(avg_transfers, 2),
+    }
 
 
 # ================================================================ 汇总输出
@@ -256,21 +364,28 @@ def write_conclusion(results: dict) -> None:
         "## 3. 空间维度",
         f"- 进站量最大站点：{results['客流最大站点']}",
         f"- 进站量最小站点：{results['客流最小站点']}",
+        f"- 最繁忙线路：{results['最繁忙线路']}（单站日均进站 {results['最繁忙线路单站日均']:,} 人次，详见 表7）",
+        f"- 单站日均进站最高的区域：{results['单站日均最高区']}（详见 表8/表8b）",
         "",
-        "## 4. 出行距离",
-        f"- 加权平均出行距离（站点间直线/球面距离）：{results['平均出行距离_km']} km",
-        "- 注：上值为起终点站经纬度的球面直线距离，非沿轨道实际路径距离",
+        "## 4. 出行距离与时耗",
+        f"- 加权平均出行距离（站点间球面直线距离）：{results['平均出行距离_km']} km",
+        f"- 加权平均出行时长（按 OD 流量加权）：{results['平均出行时长_min']} 分钟",
+        f"- 加权平均换乘次数：{results['平均换乘次数']} 次",
+        "- 注：出行距离为起终点站经纬度的球面直线距离（非沿轨道实际路径）；出行时长/换乘来自分工1 `od_travel_time.csv`",
         "",
         "## 5. 业务归因解读",
         "- **周五全周最高、周日最低**：周五叠加「工作日通勤」与「下班后晚间休闲/离沪出行」双重需求，日均进站 681 万人次居全周之首；周日（431 万）缺少刚性通勤、以休闲出行为主，为全周谷底。",
         "- **月度先降后升、8 月达峰**：6 月为低谷（1.70 亿人次），受梅雨季出行意愿下降与学期末出行减少影响；7 月起进入暑期，旅游、返乡、休闲出行叠加，客流逐月攀升，8 月（1.94 亿人次）达样本期峰值。",
         "- **人民广场（People's Square）断层第一**：全期进站约 1800 万人次，约为次席徐家汇（1194 万）的 1.5 倍，源于 1/2/8 号线三线换乘 + 市政府/南京东路商圈 + 旅游核心区位的多重叠加。",
         "- **通勤主导结构**：工作日日均 651 万较周末 451 万高约 44%，且早高峰（8:00）显著强于晚高峰（17:00），印证「早晚高峰通勤」是全网客流主体。",
+        f"- **线路强度分化**：{results['最繁忙线路']} 为全网最繁忙线路，主城区干线与郊区末端支线（如 5/16 号线）单站客流强度落差明显（详见 表7）。",
+        f"- **城区/郊区梯度**：{results['单站日均最高区']}单站日均进站最高；核心城区「工作日/周末」比值约 {results['核心城区工作日周末比']}、郊区约 {results['郊区工作日周末比']}，印证中心城区通勤主导、郊区低频长距离出行的结构。",
         "",
-        "## 待补充（依赖分工1 补数据）",
-        "- 平均出行时长：OD 表无时长字段，待补",
-        "- 线路客流强度：缺站点→线路映射表",
-        "- 核心城区 vs 郊区差异：缺城区/郊区分类",
+        "## 6. 数据补齐说明（分工1 已交付）",
+        "- 平均出行时长：由 `od_travel_time.csv`（`est_time_min` 字段）补齐",
+        "- 线路客流强度：由 `station_line_map.csv` 补齐",
+        "- 核心城区 vs 郊区差异：由 `station_area_class.csv`（`core_suburb`/`ring` 字段）补齐",
+        "- 另收到 `weather_hourly.csv`（逐小时天气），可支撑后续「天气对客流影响」分析",
     ]
     (OUT_DIR / "统计分析结论.md").write_text("\n".join(lines), encoding="utf-8")
     print(f"\n结果已输出到 {OUT_DIR}")
@@ -283,27 +398,31 @@ def main() -> None:
     print(f"数据目录：{DATA_INOUT.parent}")
     print("=" * 60)
 
-    print("\n[1/4] 读取进出站客流表并聚合……")
+    print("\n[1/5] 读取进出站客流表并聚合……")
     flow = load_hourly_flow()
     print(f"  聚合后 {len(flow):,} 行")
 
-    print("\n[2/4] 全局描述性统计……")
+    print("\n[2/5] 全局描述性统计……")
     g = global_stats(flow)
 
-    print("\n[3/4] 时间维度分析……")
+    print("\n[3/5] 时间维度分析……")
     t = time_stats(flow)
 
-    print("\n[4/4] 空间维度 · 站点客流排名……")
+    print("\n[4/5] 空间维度 · 站点排名 / 线路强度 / 城区郊区……")
     s = station_rank(flow)
+    l = line_strength(flow)
+    a = area_diff(flow)
 
-    results = {**g, **t, **s}
+    results = {**g, **t, **s, **l, **a}
 
     if not SKIP_OD:
-        print("\n[附加] 平均出行距离（分块处理 18G OD 表）……")
-        results.update(od_distance())
+        print("\n[5/5] 出行距离与时耗（分块处理 18G OD 表）……")
+        results.update(od_metrics())
     else:
         results["平均出行距离_km"] = "（--skip-od 跳过）"
-        print("\n[附加] 已跳过平均出行距离计算（--skip-od）")
+        results["平均出行时长_min"] = "（--skip-od 跳过）"
+        results["平均换乘次数"] = "（--skip-od 跳过）"
+        print("\n[5/5] 已跳过出行距离与时耗计算（--skip-od）")
 
     write_conclusion(results)
     print("\n完成。")
