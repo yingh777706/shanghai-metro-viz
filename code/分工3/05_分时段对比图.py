@@ -48,8 +48,8 @@ for i, (col, title) in enumerate(periods):
     ax = axes[i]
     vals = station_geo[col].values
     size_clipped = np.clip(vals, None, np.percentile(vals, 95))
-    ms = 15 + (size_clipped / np.percentile(vals, 95)) * 200
-    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.8, vmin=0, vmax=vmax)
+    ms = 4 + (size_clipped / np.percentile(vals, 95)) * 60
+    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.55, vmin=0, vmax=vmax)
     ctx.add_basemap(ax, source=AMAP_URL, zoom=11)
     ax.set_title(title, fontsize=14)
     ax.set_axis_off()
