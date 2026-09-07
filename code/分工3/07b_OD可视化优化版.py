@@ -119,11 +119,13 @@ flow_vals = top15["Flow"].values
 p95 = np.percentile(flow_vals, 95)
 linewidths = 1.5 + (np.clip(flow_vals, None, p95) / p95) * 7
 
-# 颜色按实际客流量映射（YlOrRd），并创建colorbar
-norm = Normalize(vmin=flow_vals.min(), vmax=flow_vals.max())
-sm = ScalarMappable(cmap="YlOrRd", norm=norm)
-sm.set_array([])
-colors = sm.to_rgba(flow_vals)
+# OD流向线统一用深红色，线宽映射客流量级
+colors = ["#b2182b"] * len(top15)
+
+# 计算市中心（所有站点几何中心），用于标注向外偏移
+city_center = station_geo.geometry.unary_union.centroid
+cx, cy = city_center.x, city_center.y
+offset_dist = 18000  # 标注偏移距离（米，Web墨卡托单位）
 
 for idx, (_, r) in enumerate(top15.iterrows()):
     ox, oy = trans.transform(r["o_lon"], r["o_lat"])
@@ -138,22 +140,42 @@ for idx, (_, r) in enumerate(top15.iterrows()):
         zorder=3
     )
     ax.add_patch(arrow)
-    # 标注起终点名称（只标注前8条避免太挤）
+    # 标注起终点名称（拉远标注，加细引线，不挡站点）
     if idx < 8:
-        ax.text(ox, oy, r["o_name"], fontsize=7, ha="right", va="bottom",
-                fontweight="bold", zorder=5,
-                bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.8, edgecolor="none"))
-        ax.text(dx, dy, r["d_name"], fontsize=7, ha="left", va="top",
-                fontweight="bold", zorder=5,
-                bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.8, edgecolor="none"))
+        # 起点：沿从市中心向外方向偏移
+        angle_o = np.arctan2(oy - cy, ox - cx)
+        o_tx = ox + offset_dist * np.cos(angle_o)
+        o_ty = oy + offset_dist * np.sin(angle_o)
+        ax.annotate(r["o_name"], xy=(ox, oy), xytext=(o_tx, o_ty),
+                    fontsize=7, fontweight="bold", zorder=5,
+                    arrowprops=dict(arrowstyle="-", color="#888888", lw=0.6),
+                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.85, edgecolor="none"))
+        # 终点：沿从市中心向外方向偏移
+        angle_d = np.arctan2(dy - cy, dx - cx)
+        d_tx = dx + offset_dist * np.cos(angle_d)
+        d_ty = dy + offset_dist * np.sin(angle_d)
+        ax.annotate(r["d_name"], xy=(dx, dy), xytext=(d_tx, d_ty),
+                    fontsize=7, fontweight="bold", zorder=5,
+                    arrowprops=dict(arrowstyle="-", color="#888888", lw=0.6),
+                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.85, edgecolor="none"))
 
-# 绘制站点
-station_geo.plot(ax=ax, color="#2c3e50", markersize=25, zorder=4, alpha=0.7)
+# 绘制站点（颜色映射全天总客流，和其他图风格一致）
+station_flow = station_geo["全天总客流"].values
+sp95 = np.percentile(station_flow, 95)
+sizes_clipped = np.clip(station_flow, None, sp95)
+station_markersize = 8 + (sizes_clipped / sp95) * 35
+station_plot = station_geo.plot(
+    ax=ax, column="全天总客流", cmap=CMAP_FLOW,
+    markersize=station_markersize, alpha=0.8, zorder=4,
+    vmin=0, vmax=station_flow.max()
+)
 ax.autoscale()
 
-# 添加客流量颜色条
-cbar = fig.colorbar(sm, ax=ax, shrink=0.6, pad=0.02)
-cbar.set_label("OD客流量（人次）", fontsize=12)
+# 添加站点客流量颜色条
+sm_station = ScalarMappable(cmap=CMAP_FLOW, norm=Normalize(vmin=0, vmax=station_flow.max()))
+sm_station.set_array([])
+cbar = fig.colorbar(sm_station, ax=ax, shrink=0.6, pad=0.02)
+cbar.set_label("站点全天客流量（人次）", fontsize=12)
 
 ax.set_title("上海地铁TOP15 OD客流流向图（带箭头，线宽=客流量级）", fontsize=15, pad=15, fontweight="bold")
 ax.set_axis_off()
