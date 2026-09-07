@@ -11,16 +11,14 @@ import geopandas as gpd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.cm import ScalarMappable
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-# 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
-CMAP_FLOW = LinearSegmentedColormap.from_list(
-    "blue_red_dark",
-    ["#2166ac", "#4393c3", "#6a0d83", "#d6604d", "#9e0142"],
-    N=256
-)
+# 从RdBu截取0.1~0.9范围：中蓝→白→中红，去掉最深的两端
+_rdbu = plt.get_cmap("RdBu_r", 256)
+_colors = [_rdbu(i) for i in np.linspace(0.1, 0.9, 256)]
+CMAP_FLOW = LinearSegmentedColormap.from_list("RdBu_mid", _colors)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
