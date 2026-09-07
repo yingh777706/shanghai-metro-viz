@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.cm import ScalarMappable
 import numpy as np
 
 # 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
@@ -72,6 +73,13 @@ for i, (col, title) in enumerate(periods):
     ax.set_axis_off()
 
 plt.suptitle("上海地铁分时段客流空间分布对比", fontsize=18, y=0.96)
+
+# 共享颜色条（四个子图统一色阶）
+sm = ScalarMappable(cmap=CMAP_FLOW, norm=plt.Normalize(vmin=0, vmax=vmax))
+sm.set_array([])
+cbar = fig.colorbar(sm, ax=axes, shrink=0.6, pad=0.02)
+cbar.set_label("客流量（人次）", fontsize=12)
+
 plt.tight_layout()
 plt.savefig(OUT_FILE, bbox_inches="tight", facecolor="white")
 plt.close()
