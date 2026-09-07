@@ -31,6 +31,10 @@ station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
 districts = gpd.read_file(dist_path).to_crs(epsg=3857)
 
+# 上海地铁线路
+metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
+metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
+
 periods = [
     ("早高峰客流", "早高峰（7:00–9:00）"),
     ("晚高峰客流", "晚高峰（17:00–19:00）"),
@@ -49,11 +53,15 @@ axes = axes.flatten()
 for i, (col, title) in enumerate(periods):
     ax = axes[i]
     ax.set_facecolor("white")
-    districts.boundary.plot(ax=ax, color="#aaaaaa", linewidth=0.6, zorder=1)
+    districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.5, zorder=1)
+    # 地铁线路
+    for _, line in metro_lines.iterrows():
+        line_color = line["color"] if line["color"] else "#999999"
+        gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=0.8, alpha=0.4, zorder=2)
     vals = station_geo[col].values
     size_clipped = np.clip(vals, None, np.percentile(vals, 95))
-    ms = 4 + (size_clipped / np.percentile(vals, 95)) * 60
-    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.6, vmin=0, vmax=vmax, zorder=2)
+    ms = 2 + (size_clipped / np.percentile(vals, 95)) * 25
+    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.55, vmin=0, vmax=vmax, zorder=3)
     ax.set_title(title, fontsize=14)
     ax.set_axis_off()
 

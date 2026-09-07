@@ -94,12 +94,20 @@ station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
 districts = gpd.read_file(dist_path).to_crs(epsg=3857)
 
+# 上海地铁线路
+metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
+metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
+
 trans = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
 
 top15 = od.head(15).copy()
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
 ax.set_facecolor("white")
-districts.boundary.plot(ax=ax, color="#aaaaaa", linewidth=0.8, zorder=1)
+districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
+# 地铁线路
+for _, line in metro_lines.iterrows():
+    line_color = line["color"] if line["color"] else "#999999"
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=0.9, alpha=0.35, zorder=2)
 
 # 线宽分位数映射
 flow_vals = top15["Flow"].values

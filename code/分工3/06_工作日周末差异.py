@@ -31,6 +31,10 @@ station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
 districts = gpd.read_file(dist_path).to_crs(epsg=3857)
 
+# 上海地铁线路
+metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
+metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
+
 station_geo["flow_diff"] = station_geo["工作日日均"] - station_geo["周末日均"]
 
 # 分位数点大小
@@ -44,13 +48,17 @@ vmax_abs = np.percentile(station_geo["flow_diff"].abs(), 95)
 
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
 ax.set_facecolor("white")
-districts.boundary.plot(ax=ax, color="#aaaaaa", linewidth=0.8, zorder=1)
+districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
+# 地铁线路
+for _, line in metro_lines.iterrows():
+    line_color = line["color"] if line["color"] else "#999999"
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=0.9, alpha=0.4, zorder=2)
 station_geo.plot(
     ax=ax, column="flow_diff", cmap=CMAP_DIFF,
-    markersize=markersize, alpha=0.7,
+    markersize=markersize, alpha=0.65,
     vmin=-vmax_abs, vmax=vmax_abs,
     legend=True, legend_kwds={"shrink": 0.6, "label": "客流差值（工作日 − 周末，人次/日）"},
-    zorder=2
+    zorder=3
 )
 
 ax.set_title("上海地铁工作日与周末客流空间差异图", fontsize=16, pad=20)
