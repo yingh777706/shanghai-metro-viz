@@ -11,10 +11,15 @@ import geopandas as gpd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-# 复用分工4统一配色
-CMAP_FLOW = "YlOrRd"
+# 自定义深蓝→深紫→深红深色渐变（全程无浅色）
+CMAP_FLOW = LinearSegmentedColormap.from_list(
+    "blue_red_dark",
+    ["#053061", "#2166ac", "#40004b", "#b2182b", "#67001f"],
+    N=256
+)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False

@@ -11,9 +11,15 @@ import geopandas as gpd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-CMAP_DIFF = "RdBu_r"  # 复用分工4差异配色
+# 自定义深蓝→深紫→深红深色渐变（双向差异：负=蓝，正=红，中间深紫）
+CMAP_DIFF = LinearSegmentedColormap.from_list(
+    "blue_red_dark",
+    ["#053061", "#2166ac", "#40004b", "#b2182b", "#67001f"],
+    N=256
+)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
