@@ -30,13 +30,13 @@ prof = df.groupby(["daygrp", "slot"])["total"].sum().reset_index()
 prof["total"] = prof["total"] / prof["daygrp"].map(ndays)
 prof["hour"] = 6 + prof["slot"] / 6.0
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 5.8))
+fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.35))
 
 ax = axes[0]
 colors = [C_MAIN]*4 + ["#e377c2", C_ACCENT, C_ACCENT]
 b = ax.bar(cn, by_wd.values / 1e4, 0.6, color=colors)
 for bb, v in zip(b, by_wd.values):
-    ax.text(bb.get_x() + bb.get_width()/2, v / 1e4, f"{v/1e4:.0f}", ha="center", fontsize=10)
+    ax.text(bb.get_x() + bb.get_width()/2, v / 1e4, f"{v/1e4:.0f}", ha="center", fontsize=12)
 ax.set_ylabel("平均日客流量(万人次)")
 ax.set_title("一周各日平均客流")
 
@@ -50,8 +50,8 @@ ax.set_xlabel("时刻"); ax.set_ylabel("客流量(万人次/10分钟)")
 ax.set_xticks(range(6, 24))
 ax.legend()
 
-fig.suptitle("星期几客流模式", fontsize=15, fontweight="bold")
+fig.suptitle("星期几客流模式", fontsize=17, fontweight="bold")
 fig.tight_layout(rect=[0, 0.02, 1, 0.95])
 fig.text(0.99, 0.005, "数据来源: MetroFlow 进出站客流 × 工作日日历 | 分工4",
-         ha="right", fontsize=8, color=C_GRAY)
+         ha="right", fontsize=10, color=C_GRAY)
 savefig(fig, os.path.join(OUT, "图4-14 星期几客流模式.png"))

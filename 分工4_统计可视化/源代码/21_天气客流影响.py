@@ -27,7 +27,7 @@ m = daily.merge(wdaily, on="date")
 work = m[m.isWorkday == 1].copy()
 work["rainy"] = work["rain_hours"] >= 3   # 运营时段>=3小时有雨 记为雨天
 
-fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.8))
+fig, axes = plt.subplots(1, 2, figsize=(10.12, 4.35))
 
 # 左: 雨天vs晴天 工作日客流
 ax = axes[0]
@@ -38,7 +38,7 @@ bp = ax.boxplot(vals, tick_labels=[f"晴天\n({len(vals[0])}天)", f"雨天\n({l
 for patch, c in zip(bp["boxes"], [C_MAIN, "#17becf"]):
     patch.set_facecolor(c); patch.set_alpha(0.75)
 for i, v in enumerate(vals):
-    ax.text(i + 1, v.median(), f"中位 {v.median():.0f}万", ha="center", va="bottom", fontsize=10)
+    ax.text(i + 1, v.median(), f"中位 {v.median():.0f}万", ha="center", va="bottom", fontsize=12)
 ax.set_ylabel("工作日全网日客流(万人次)")
 ax.set_title("雨天 vs 晴天: 工作日客流")
 
@@ -55,8 +55,8 @@ ax.set_xlabel("运营时段平均气温(°C)"); ax.set_ylabel("工作日全网�
 ax.set_title("气温与客流的关系(工作日)")
 ax.legend(loc="lower right")
 
-fig.suptitle("天气对地铁客流的影响", fontsize=15, fontweight="bold")
+fig.suptitle("天气对地铁客流的影响", fontsize=17, fontweight="bold")
 fig.tight_layout(rect=[0, 0.02, 1, 0.95])
 fig.text(0.99, 0.005, "数据来源: MetroFlow 进出站客流 × 逐小时天气 | 分工4",
-         ha="right", fontsize=8, color=C_GRAY)
+         ha="right", fontsize=10, color=C_GRAY)
 savefig(fig, os.path.join(OUT, "图4-13 天气客流影响.png"))

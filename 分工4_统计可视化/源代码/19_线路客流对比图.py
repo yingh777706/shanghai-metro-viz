@@ -29,14 +29,14 @@ lm2["n_lines"] = lm2.groupby("stationID")["line"].transform("count")
 lm2["flow"] = lm2["stationID"].map(st) / lm2["n_lines"]
 line_flow = lm2.groupby("line")["flow"].sum().sort_index()
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={"width_ratios": [1.1, 1]})
+fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.5), gridspec_kw={"width_ratios": [1.1, 1]})
 
 ax = axes[0]
 b = ax.bar(line_flow.index.astype(str), line_flow.values / 1e4, 0.65, color=C_MAIN)
 top3 = line_flow.nlargest(3).index
 for bb, ln, v in zip(b, line_flow.index, line_flow.values):
     ax.text(bb.get_x() + bb.get_width()/2, v / 1e4, f"{v/1e4:.0f}",
-            ha="center", fontsize=9,
+            ha="center", fontsize=11,
             color=C_C if ln in top3 else "black",
             fontweight="bold" if ln in top3 else "normal")
 ax.set_xlabel("线路"); ax.set_ylabel("日均客流量(万人次)")
@@ -59,8 +59,8 @@ ax.set_xticks(range(6, 24))
 ax.axvspan(7, 9, color=C_C, alpha=0.06); ax.axvspan(17, 19, color=C_HBO, alpha=0.06)
 ax.legend()
 
-fig.suptitle("线路客流对比", fontsize=15, fontweight="bold")
+fig.suptitle("线路客流对比", fontsize=17, fontweight="bold")
 fig.tight_layout(rect=[0, 0.02, 1, 0.95])
 fig.text(0.99, 0.005, "数据来源: MetroFlow 进出站客流 × 站点线路对照表 | 分工4",
-         ha="right", fontsize=8, color=C_GRAY)
+         ha="right", fontsize=10, color=C_GRAY)
 savefig(fig, os.path.join(OUT, "图4-11 线路客流对比.png"))

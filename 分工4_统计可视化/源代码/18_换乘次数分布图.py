@@ -35,17 +35,17 @@ share = by_nt / by_nt.sum() * 100
 avg_nt = (m["n_transfers"] * m["Flow"]).sum() / m["Flow"].sum()
 direct = share.get(0, 0)
 
-fig, ax = plt.subplots(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(7.5, 4.5))
 colors = [PALETTE[i] for i in range(len(share))]
 b = ax.bar(share.index.astype(str), share.values, 0.6, color=colors)
 for bb, v in zip(b, share.values):
-    ax.text(bb.get_x() + bb.get_width()/2, v + 0.3, f"{v:.1f}%", ha="center", fontsize=11)
+    ax.text(bb.get_x() + bb.get_width()/2, v + 0.3, f"{v:.1f}%", ha="center", fontsize=13)
 ax.set_xlabel("换乘次数(次)"); ax.set_ylabel("客流占比(%)")
 ax.set_title("乘客换乘次数分布(OD客流加权)")
-ax.text(0.98, 0.92, f"客流加权平均换乘 {avg_nt:.2f} 次\n无需换乘(同线直达)客流占 {direct:.1f}%",
-        transform=ax.transAxes, ha="right", fontsize=11,
+ax.text(0.98, 0.78, f"客流加权平均换乘 {avg_nt:.2f} 次\n无需换乘(同线直达)客流占 {direct:.1f}%",
+        transform=ax.transAxes, ha="right", fontsize=13,
         bbox=dict(boxstyle="round,pad=0.4", fc="#f5f5f5", ec=C_GRAY, lw=0.5))
 fig.text(0.99, 0.01, "数据来源: MetroFlow OD客流 × OD时长估计表 | 分工4",
-         ha="right", fontsize=8, color=C_GRAY)
+         ha="right", fontsize=10, color=C_GRAY)
 savefig(fig, os.path.join(OUT, "图4-10 换乘次数分布.png"))
 print(f"平均换乘{avg_nt:.2f}次, 直达占比{direct:.1f}%")

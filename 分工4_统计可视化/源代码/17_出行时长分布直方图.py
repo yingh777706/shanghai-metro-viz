@@ -36,7 +36,7 @@ tt = load_od_travel_time()
 m = flow.merge(tt, on=["originStation", "destinationStation"], how="inner")
 print("合并后OD对:", len(m))
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 5.8))
+fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.35))
 
 # 左: 出行时长分布
 ax = axes[0]
@@ -65,8 +65,8 @@ ax.set_title("乘客出行距离分布(沿地铁网络, OD客流加权)")
 ax.set_xlabel("出行距离(km, 网络路径距离)"); ax.set_ylabel("客流量(万人次)")
 ax.legend()
 
-fig.suptitle("乘客出行时长与距离分布", fontsize=15, fontweight="bold")
+fig.suptitle("乘客出行时长与距离分布", fontsize=17, fontweight="bold")
 fig.tight_layout(rect=[0, 0.02, 1, 0.95])
 fig.text(0.99, 0.005, "数据来源: MetroFlow OD客流 × OD时长估计表 | 分工4",
-         ha="right", fontsize=8, color=C_GRAY)
+         ha="right", fontsize=10, color=C_GRAY)
 savefig(fig, os.path.join(OUT, "图4-9 出行时长与距离分布.png"))
