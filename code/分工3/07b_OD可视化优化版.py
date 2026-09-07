@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""分工3 · OD客流可视化（更直观版本）
+"""分工3 · OD客流可视化（参考图风格）
 输出两张图：
   图3-4a OD客流矩阵热力图.png —— TOP12站点×TOP12站点矩阵，无重叠
-  图3-4b TOP15 OD简化流向图.png —— 带箭头直线，替代50条贝塞尔弧线
+  图3-4b TOP15 OD简化流向图.png —— 带箭头直线，站点着色，标注拉远
 """
 import sys
 from pathlib import Path
@@ -14,16 +14,17 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch
 import geopandas as gpd
 from pyproj import Transformer
 
-# 从RdBu截取0.1~0.9范围：中蓝→白→中红，去掉最深的两端
-_rdbu = plt.get_cmap("RdBu_r", 256)
-_colors = [_rdbu(i) for i in np.linspace(0.1, 0.9, 256)]
-CMAP_FLOW = LinearSegmentedColormap.from_list("RdBu_mid", _colors)
+# 参考图风格
+CMAP_FLOW = "YlOrRd"
+BG_COLOR = "#d6e4f0"
+LINE_COLOR = "#777777"
+OD_LINE_COLOR = "#b2182b"  # OD流向线深红色
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -41,7 +42,6 @@ print(f"读取OD数据: {od_path}, {len(od)}条")
 # ============================================================
 # 图1: OD矩阵热力图（TOP12站点）
 # ============================================================
-# 按总客流（起点+终点）取TOP12站点
 station_flow = {}
 for _, r in od.iterrows():
     station_flow[r["o_name"]] = station_flow.get(r["o_name"], 0) + r["Flow"]
@@ -49,7 +49,6 @@ for _, r in od.iterrows():
 top_stations = sorted(station_flow, key=station_flow.get, reverse=True)[:12]
 print(f"TOP12站点: {top_stations}")
 
-# 构建矩阵
 n = len(top_stations)
 matrix = np.zeros((n, n))
 for _, r in od.iterrows():
@@ -61,7 +60,6 @@ for _, r in od.iterrows():
 fig, ax = plt.subplots(figsize=(12, 10), dpi=300)
 im = ax.imshow(matrix, cmap=CMAP_FLOW, aspect="auto")
 
-# 标注数值
 for i in range(n):
     for j in range(n):
         if matrix[i][j] > 0:
@@ -88,18 +86,16 @@ plt.close()
 print(f"已保存: {out1}")
 
 # ============================================================
-# 图2: TOP15简化流向图（带箭头直线）
+# 图2: TOP15简化流向图（带箭头直线，参考图风格）
 # ============================================================
 geo_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "station_flow_geo.geojson"
 if not geo_path.exists():
     geo_path = find_data("station_flow_geo.geojson")
 station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 
-# 上海行政区边界
 dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
 districts = gpd.read_file(dist_path).to_crs(epsg=3857)
 
-# 上海地铁线路
 metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
 metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
 
@@ -107,25 +103,21 @@ trans = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
 
 top15 = od.head(15).copy()
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
-ax.set_facecolor("white")
-districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
-# 地铁线路
+ax.set_facecolor(BG_COLOR)
+districts.boundary.plot(ax=ax, color="#888888", linewidth=0.7, zorder=1)
+# 地铁线路（深灰色）
 for _, line in metro_lines.iterrows():
-    line_color = line["color"] if line["color"] else "#999999"
-    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.2, alpha=0.55, zorder=2)
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=LINE_COLOR, linewidth=1.0, alpha=0.8, zorder=2)
 
 # 线宽分位数映射
 flow_vals = top15["Flow"].values
 p95 = np.percentile(flow_vals, 95)
 linewidths = 1.5 + (np.clip(flow_vals, None, p95) / p95) * 7
 
-# OD流向线统一用深红色，线宽映射客流量级
-colors = ["#b2182b"] * len(top15)
-
-# 计算市中心（所有站点几何中心），用于标注向外偏移
-city_center = station_geo.geometry.unary_union.centroid
+# 计算市中心，用于标注向外偏移
+city_center = station_geo.geometry.union_all().centroid
 cx, cy = city_center.x, city_center.y
-offset_dist = 18000  # 标注偏移距离（米，Web墨卡托单位）
+offset_dist = 20000
 
 for idx, (_, r) in enumerate(top15.iterrows()):
     ox, oy = trans.transform(r["o_lon"], r["o_lat"])
@@ -135,44 +127,40 @@ for idx, (_, r) in enumerate(top15.iterrows()):
         (ox, oy), (dx, dy),
         arrowstyle="-|>", mutation_scale=15,
         linewidth=linewidths[idx],
-        color=colors[idx],
+        color=OD_LINE_COLOR,
         alpha=0.85,
         zorder=3
     )
     ax.add_patch(arrow)
-    # 标注起终点名称（拉远标注，加细引线，不挡站点）
+    # 标注起终点名称（拉远标注，加细引线）
     if idx < 8:
-        # 起点：沿从市中心向外方向偏移
         angle_o = np.arctan2(oy - cy, ox - cx)
         o_tx = ox + offset_dist * np.cos(angle_o)
         o_ty = oy + offset_dist * np.sin(angle_o)
         ax.annotate(r["o_name"], xy=(ox, oy), xytext=(o_tx, o_ty),
-                    fontsize=7, fontweight="bold", zorder=5,
-                    arrowprops=dict(arrowstyle="-", color="#888888", lw=0.6),
-                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.85, edgecolor="none"))
-        # 终点：沿从市中心向外方向偏移
+                    fontsize=7, fontweight="bold", zorder=5, color="#222222",
+                    arrowprops=dict(arrowstyle="-", color="#555555", lw=0.7),
+                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.9, edgecolor="none"))
         angle_d = np.arctan2(dy - cy, dx - cx)
         d_tx = dx + offset_dist * np.cos(angle_d)
         d_ty = dy + offset_dist * np.sin(angle_d)
         ax.annotate(r["d_name"], xy=(dx, dy), xytext=(d_tx, d_ty),
-                    fontsize=7, fontweight="bold", zorder=5,
-                    arrowprops=dict(arrowstyle="-", color="#888888", lw=0.6),
-                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.85, edgecolor="none"))
+                    fontsize=7, fontweight="bold", zorder=5, color="#222222",
+                    arrowprops=dict(arrowstyle="-", color="#555555", lw=0.7),
+                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.9, edgecolor="none"))
 
-# 绘制站点（颜色映射全天总客流，和其他图风格一致）
-station_flow = station_geo["全天总客流"].values
-sp95 = np.percentile(station_flow, 95)
-sizes_clipped = np.clip(station_flow, None, sp95)
-station_markersize = 8 + (sizes_clipped / sp95) * 35
-station_plot = station_geo.plot(
+# 绘制站点（固定大小，带黑色描边，YlOrRd配色）
+station_flow_vals = station_geo["全天总客流"].values
+station_geo.plot(
     ax=ax, column="全天总客流", cmap=CMAP_FLOW,
-    markersize=station_markersize, alpha=0.8, zorder=4,
-    vmin=0, vmax=station_flow.max()
+    markersize=40, alpha=0.9,
+    edgecolor="#333333", linewidth=0.5,
+    zorder=4, vmin=0, vmax=station_flow_vals.max()
 )
 ax.autoscale()
 
 # 添加站点客流量颜色条
-sm_station = ScalarMappable(cmap=CMAP_FLOW, norm=Normalize(vmin=0, vmax=station_flow.max()))
+sm_station = ScalarMappable(cmap=CMAP_FLOW, norm=Normalize(vmin=0, vmax=station_flow_vals.max()))
 sm_station.set_array([])
 cbar = fig.colorbar(sm_station, ax=ax, shrink=0.6, pad=0.02)
 cbar.set_label("站点全天客流量（人次）", fontsize=12)
@@ -181,7 +169,7 @@ ax.set_title("上海地铁TOP15 OD客流流向图（带箭头，线宽=客流量
 ax.set_axis_off()
 plt.tight_layout()
 out2 = OUT_DIR / "图3-4b TOP15 OD简化流向图.png"
-plt.savefig(out2, bbox_inches="tight", facecolor="white")
+plt.savefig(out2, bbox_inches="tight", facecolor=BG_COLOR)
 plt.close()
 print(f"已保存: {out2}")
 
