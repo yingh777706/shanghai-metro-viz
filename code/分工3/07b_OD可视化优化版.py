@@ -107,7 +107,7 @@ districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
 # 地铁线路
 for _, line in metro_lines.iterrows():
     line_color = line["color"] if line["color"] else "#999999"
-    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=0.9, alpha=0.35, zorder=2)
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.2, alpha=0.55, zorder=2)
 
 # 线宽分位数映射
 flow_vals = top15["Flow"].values

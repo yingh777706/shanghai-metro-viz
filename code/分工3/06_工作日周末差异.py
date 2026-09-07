@@ -49,13 +49,13 @@ vmax_abs = np.percentile(station_geo["flow_diff"].abs(), 95)
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
 ax.set_facecolor("white")
 districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
-# 地铁线路
+# 地铁线路（提高可见度）
 for _, line in metro_lines.iterrows():
     line_color = line["color"] if line["color"] else "#999999"
-    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=0.9, alpha=0.4, zorder=2)
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.3, alpha=0.7, zorder=2)
 station_geo.plot(
     ax=ax, column="flow_diff", cmap=CMAP_DIFF,
-    markersize=markersize, alpha=0.65,
+    markersize=markersize, alpha=0.85,
     vmin=-vmax_abs, vmax=vmax_abs,
     legend=True, legend_kwds={"shrink": 0.6, "label": "客流差值（工作日 − 周末，人次/日）"},
     zorder=3

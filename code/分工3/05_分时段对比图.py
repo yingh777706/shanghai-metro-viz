@@ -57,11 +57,11 @@ for i, (col, title) in enumerate(periods):
     # 地铁线路
     for _, line in metro_lines.iterrows():
         line_color = line["color"] if line["color"] else "#999999"
-        gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=0.8, alpha=0.4, zorder=2)
+        gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.1, alpha=0.6, zorder=2)
     vals = station_geo[col].values
     size_clipped = np.clip(vals, None, np.percentile(vals, 95))
     ms = 2 + (size_clipped / np.percentile(vals, 95)) * 25
-    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.55, vmin=0, vmax=vmax, zorder=3)
+    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.8, vmin=0, vmax=vmax, zorder=3)
     ax.set_title(title, fontsize=14)
     ax.set_axis_off()
 

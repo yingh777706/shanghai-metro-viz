@@ -49,14 +49,14 @@ ax.set_facecolor("white")
 # 绘制行政区边界（简洁底图）
 districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
 
-# 绘制地铁线路（官方颜色，细线，半透明）
+# 绘制地铁线路（官方颜色，中等线宽，较高可见度）
 for _, line in metro_lines.iterrows():
     line_color = line["color"] if line["color"] else "#999999"
-    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.0, alpha=0.45, zorder=2)
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.3, alpha=0.65, zorder=2)
 
 station_geo.plot(
     ax=ax, column="全天总客流", cmap=CMAP_FLOW,
-    markersize=markersize, alpha=0.55,
+    markersize=markersize, alpha=0.8,
     legend=True, legend_kwds={"shrink": 0.6, "label": "全天客流量（人次）"},
     zorder=3
 )
