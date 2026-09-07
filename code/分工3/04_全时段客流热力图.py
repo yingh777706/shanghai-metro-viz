@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-# 自定义深蓝→深紫→深红深色渐变（全程无浅色）
+# 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
 CMAP_FLOW = LinearSegmentedColormap.from_list(
     "blue_red_dark",
-    ["#053061", "#2166ac", "#40004b", "#b2182b", "#67001f"],
+    ["#2166ac", "#4393c3", "#6a0d83", "#d6604d", "#9e0142"],
     N=256
 )
 

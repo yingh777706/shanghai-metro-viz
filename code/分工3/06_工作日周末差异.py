@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-# 自定义深蓝→深紫→深红深色渐变（双向差异：负=蓝，正=红，中间深紫）
+# 自定义中蓝→深紫→深红深色渐变（双向差异：负=蓝，正=红，中间深紫）
 CMAP_DIFF = LinearSegmentedColormap.from_list(
     "blue_red_dark",
-    ["#053061", "#2166ac", "#40004b", "#b2182b", "#67001f"],
+    ["#2166ac", "#4393c3", "#6a0d83", "#d6604d", "#9e0142"],
     N=256
 )
 
