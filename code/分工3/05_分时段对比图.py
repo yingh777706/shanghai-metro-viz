@@ -11,11 +11,15 @@ import geopandas as gpd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import contextily as ctx
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-CMAP_FLOW = "YlOrRd"
-AMAP_URL = "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+# 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
+CMAP_FLOW = LinearSegmentedColormap.from_list(
+    "blue_red_dark",
+    ["#2166ac", "#4393c3", "#6a0d83", "#d6604d", "#9e0142"],
+    N=256
+)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -28,6 +32,14 @@ geo_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "station_
 if not geo_path.exists():
     geo_path = find_data("station_flow_geo.geojson")
 station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
+
+# 上海行政区边界
+dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
+districts = gpd.read_file(dist_path).to_crs(epsg=3857)
+
+# 上海地铁线路
+metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
+metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
 
 periods = [
     ("早高峰客流", "早高峰（7:00–9:00）"),
@@ -46,16 +58,21 @@ axes = axes.flatten()
 
 for i, (col, title) in enumerate(periods):
     ax = axes[i]
+    ax.set_facecolor("white")
+    districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.5, zorder=1)
+    # 地铁线路
+    for _, line in metro_lines.iterrows():
+        line_color = line["color"] if line["color"] else "#999999"
+        gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.1, alpha=0.6, zorder=2)
     vals = station_geo[col].values
     size_clipped = np.clip(vals, None, np.percentile(vals, 95))
-    ms = 4 + (size_clipped / np.percentile(vals, 95)) * 60
-    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.55, vmin=0, vmax=vmax)
-    ctx.add_basemap(ax, source=AMAP_URL, zoom=11)
+    ms = 2 + (size_clipped / np.percentile(vals, 95)) * 25
+    station_geo.plot(ax=ax, column=col, cmap=CMAP_FLOW, markersize=ms, alpha=0.8, vmin=0, vmax=vmax, zorder=3)
     ax.set_title(title, fontsize=14)
     ax.set_axis_off()
 
 plt.suptitle("上海地铁分时段客流空间分布对比", fontsize=18, y=0.96)
 plt.tight_layout()
-plt.savefig(OUT_FILE, bbox_inches="tight")
+plt.savefig(OUT_FILE, bbox_inches="tight", facecolor="white")
 plt.close()
 print(f"已保存: {OUT_FILE}")

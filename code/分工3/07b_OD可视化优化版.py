@@ -14,13 +14,17 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import FancyArrowPatch
-import contextily as ctx
 import geopandas as gpd
 from pyproj import Transformer
 
-CMAP_FLOW = "YlOrRd"
-AMAP_URL = "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+# 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
+CMAP_FLOW = LinearSegmentedColormap.from_list(
+    "blue_red_dark",
+    ["#2166ac", "#4393c3", "#6a0d83", "#d6604d", "#9e0142"],
+    N=256
+)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -92,10 +96,24 @@ if not geo_path.exists():
     geo_path = find_data("station_flow_geo.geojson")
 station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 
+# 上海行政区边界
+dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
+districts = gpd.read_file(dist_path).to_crs(epsg=3857)
+
+# 上海地铁线路
+metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
+metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
+
 trans = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
 
 top15 = od.head(15).copy()
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
+ax.set_facecolor("white")
+districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
+# 地铁线路
+for _, line in metro_lines.iterrows():
+    line_color = line["color"] if line["color"] else "#999999"
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.2, alpha=0.55, zorder=2)
 
 # 线宽分位数映射
 flow_vals = top15["Flow"].values
@@ -129,14 +147,13 @@ for idx, (_, r) in enumerate(top15.iterrows()):
 
 # 绘制站点
 station_geo.plot(ax=ax, color="#2c3e50", markersize=25, zorder=4, alpha=0.7)
-ctx.add_basemap(ax, source=AMAP_URL, zoom=11)
 ax.autoscale()
 
 ax.set_title("上海地铁TOP15 OD客流流向图（带箭头，线宽=客流量级）", fontsize=15, pad=15, fontweight="bold")
 ax.set_axis_off()
 plt.tight_layout()
 out2 = OUT_DIR / "图3-4b TOP15 OD简化流向图.png"
-plt.savefig(out2, bbox_inches="tight")
+plt.savefig(out2, bbox_inches="tight", facecolor="white")
 plt.close()
 print(f"已保存: {out2}")
 

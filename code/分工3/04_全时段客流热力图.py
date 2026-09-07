@@ -11,12 +11,15 @@ import geopandas as gpd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import contextily as ctx
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-# 复用分工4统一配色
-CMAP_FLOW = "YlOrRd"
-AMAP_URL = "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+# 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
+CMAP_FLOW = LinearSegmentedColormap.from_list(
+    "blue_red_dark",
+    ["#2166ac", "#4393c3", "#6a0d83", "#d6604d", "#9e0142"],
+    N=256
+)
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -31,29 +34,48 @@ if not geo_path.exists():
     geo_path = find_data("station_flow_geo.geojson")
 station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 
+# 读取上海行政区边界（简洁底图：白色背景+灰色边界）
+dist_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_districts.geojson"
+districts = gpd.read_file(dist_path).to_crs(epsg=3857)
+
+# 读取上海地铁线路
+metro_path = PROJECT_ROOT / "分工3_空间可视化" / "空间数据" / "shanghai_metro_lines.geojson"
+metro_lines = gpd.read_file(metro_path).to_crs(epsg=3857)
+
 # 分位数映射点大小（避免魔法数字，极值裁剪到95分位）
 flow = station_geo["全天总客流"].values
 p95 = np.percentile(flow, 95)
 size_clipped = np.clip(flow, None, p95)
-markersize = 5 + (size_clipped / p95) * 80  # 5~85 范围，避免重叠糊在一起
+markersize = 2 + (size_clipped / p95) * 33  # 2~35范围，缩小避免重叠
 
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
+ax.set_facecolor("white")
+
+# 绘制行政区边界（简洁底图）
+districts.boundary.plot(ax=ax, color="#cccccc", linewidth=0.6, zorder=1)
+
+# 绘制地铁线路（官方颜色，中等线宽，较高可见度）
+for _, line in metro_lines.iterrows():
+    line_color = line["color"] if line["color"] else "#999999"
+    gpd.GeoSeries([line.geometry]).plot(ax=ax, color=line_color, linewidth=1.3, alpha=0.65, zorder=2)
 
 station_geo.plot(
     ax=ax, column="全天总客流", cmap=CMAP_FLOW,
-    markersize=markersize, alpha=0.55,
-    legend=True, legend_kwds={"shrink": 0.6, "label": "全天客流量（人次）"}
+    markersize=markersize, alpha=0.8,
+    legend=True, legend_kwds={"shrink": 0.6, "label": "全天客流量（人次）"},
+    zorder=3
 )
-ctx.add_basemap(ax, source=AMAP_URL, zoom=11)
 
-# 标注TOP10站点
-top10 = station_geo.sort_values("全天总客流", ascending=False).head(10)
-for _, row in top10.iterrows():
-    ax.text(row.geometry.x, row.geometry.y, row["name"], fontsize=9, ha="left", va="bottom")
+# 标注TOP5站点（避免重叠）
+top5 = station_geo.sort_values("全天总客流", ascending=False).head(5)
+for _, row in top5.iterrows():
+    ax.text(row.geometry.x, row.geometry.y, row["name"], fontsize=10, ha="left", va="bottom",
+            fontweight="bold", zorder=4,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"))
 
 ax.set_title("上海地铁全时段站点客流分布图（2017年5–8月）", fontsize=16, pad=20)
 ax.set_axis_off()
 plt.tight_layout()
-plt.savefig(OUT_FILE, bbox_inches="tight")
+plt.savefig(OUT_FILE, bbox_inches="tight", facecolor="white")
 plt.close()
 print(f"已保存: {OUT_FILE}")
