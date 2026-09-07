@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.cm import ScalarMappable
 import numpy as np
 
 # 自定义中蓝→深紫→深红深色渐变（蓝色端不糊）
@@ -53,7 +54,7 @@ vmax = station_geo["早高峰客流"].max()
 flow_all = station_geo["早高峰客流"].values
 p95 = np.percentile(flow_all, 95)
 
-fig, axes = plt.subplots(2, 2, figsize=(18, 15), dpi=300)
+fig, axes = plt.subplots(2, 2, figsize=(20, 15), dpi=300)
 axes = axes.flatten()
 
 for i, (col, title) in enumerate(periods):
@@ -72,7 +73,17 @@ for i, (col, title) in enumerate(periods):
     ax.set_axis_off()
 
 plt.suptitle("上海地铁分时段客流空间分布对比", fontsize=18, y=0.96)
-plt.tight_layout()
+
+# 手动调整布局：右侧留12%空间给colorbar
+fig.subplots_adjust(left=0.02, right=0.88, top=0.92, bottom=0.02, wspace=0.05, hspace=0.05)
+
+# 手动创建colorbar axes，精确位置不挡图
+cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.70])
+sm = ScalarMappable(cmap=CMAP_FLOW, norm=plt.Normalize(vmin=0, vmax=vmax))
+sm.set_array([])
+cbar = fig.colorbar(sm, cax=cbar_ax)
+cbar.set_label("客流量（人次）", fontsize=12)
+
 plt.savefig(OUT_FILE, bbox_inches="tight", facecolor="white")
 plt.close()
 print(f"已保存: {OUT_FILE}")
