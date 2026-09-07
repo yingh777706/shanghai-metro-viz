@@ -8,7 +8,7 @@
   3. 标准化后，用肘部法则(SSE) + 轮廓系数确定最佳聚类数 K
   4. 运行 KMeans 聚类，把 302 个站点划分为 5 类：
      通勤居住站 / 就业办公站 / 综合枢纽站 / 休闲商圈站 / 郊区低频站点
-  5. 输出：聚类结果表、评估指标、PCA散点图、分时客流曲线图、分析结论
+  5. 输出：聚类结果表、评估指标、t-SNE聚类散点图、分时客流画像图、分析结论
 
 运行方式：
   在项目根目录或本文件所在目录执行  python kmeans_station_clustering.py
@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
@@ -50,6 +50,15 @@ sys.stdout.reconfigure(encoding="utf-8")
 RANDOM_STATE = 42        # 固定随机种子，保证结果可复现
 FINAL_K = 5              # 按分工要求最终聚成 5 类
 K_RANGE = range(3, 9)    # 肘部法则/轮廓系数搜索范围
+
+# 五类站点统一配色：图2（t-SNE）、图3（分时画像）、图6（地理分布图）保持一致
+TYPE_COLORS = {
+    "通勤居住站": "#1f77b4",
+    "综合枢纽站": "#ff7f0e",
+    "就业办公站": "#2ca02c",
+    "休闲商圈站": "#d62728",
+    "郊区低频站点": "#9467bd",
+}
 
 
 # ================================================================ 1. 读数据
@@ -214,46 +223,65 @@ def label_clusters(km: KMeans, X: pd.DataFrame, agg: pd.DataFrame,
 
 
 # ================================================================ 5. 可视化
-def plot_pca(Xs: np.ndarray, result: pd.DataFrame) -> None:
-    """PCA 降到 2 维画聚类散点图。"""
-    pca = PCA(n_components=2, random_state=RANDOM_STATE)
-    xy = pca.fit_transform(Xs)
+def plot_tsne(Xs: np.ndarray, result: pd.DataFrame, sil: float) -> float:
+    """t-SNE 降到 2 维画聚类散点图（非线性降维，簇的分离比 PCA 更清晰）。
+
+    返回 KL 散度（t-SNE 的拟合损失，越小代表高维邻域结构保留得越好）。
+    """
+    tsne = TSNE(n_components=2, perplexity=30, init="pca",
+                random_state=RANDOM_STATE)
+    xy = tsne.fit_transform(Xs)
     fig, ax = plt.subplots(figsize=(8.5, 6), dpi=150)
-    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
-    for i, t in enumerate(result["站点类型"].unique()):
+    for t, color in TYPE_COLORS.items():
         m = (result["站点类型"] == t).values
-        ax.scatter(xy[m, 0], xy[m, 1], s=22, c=colors[i % 5], label=t, alpha=0.8)
-    ax.set_xlabel(f"主成分1（解释方差 {pca.explained_variance_ratio_[0]:.0%}）")
-    ax.set_ylabel(f"主成分2（解释方差 {pca.explained_variance_ratio_[1]:.0%}）")
-    ax.set_title("K-Means 站点聚类结果（PCA 降维散点图）")
-    ax.legend(markerscale=1.6)
+        ax.scatter(xy[m, 0], xy[m, 1], s=22, c=color,
+                   label=f"{t}（{m.sum()}站）", alpha=0.8)
+    ax.set_xlabel("t-SNE 维度 1")
+    ax.set_ylabel("t-SNE 维度 2")
+    ax.set_title("K-Means 站点聚类结果（t-SNE 降维散点图）")
+    ax.legend(markerscale=1.6, fontsize=9)
+    info = (f"t-SNE：perplexity=30，KL 散度 {tsne.kl_divergence_:.4f}\n"
+            f"K-Means：K={FINAL_K}，轮廓系数 {sil:.4f}")
+    ax.text(0.02, 0.98, info, transform=ax.transAxes, va="top", fontsize=9,
+            bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#999999"))
     fig.tight_layout()
     fig.savefig(OUT_DIR / "图2_聚类散点图.png")
     plt.close(fig)
+    return float(tsne.kl_divergence_)
 
 
 def plot_profiles(result: pd.DataFrame, agg: pd.DataFrame) -> None:
-    """画每个簇的工作日平均分时进/出站客流曲线（簇中心画像）。"""
+    """画每个簇的平均分时进/出站客流曲线（2×2：工作日/周末 × 进/出站）。
+
+    同一列（同为进站或出站）的上下两幅共用 y 轴，
+    让『周末客流整体低于工作日、曲线更平缓』一目了然。
+    """
     cal = pd.read_csv(CAL_FILE, encoding="utf-8-sig")
     day_type = dict(zip(cal["date"], cal["isWorkday"]))
     agg = agg.copy()
     agg["isWorkday"] = agg["date"].map(day_type)
-    wd = agg[agg["isWorkday"] == 1].merge(
-        result[["stationID", "站点类型"]], on="stationID")
-    prof = (wd.groupby(["站点类型", "hour"])[["inFlow", "outFlow"]]
+    merged = agg.merge(result[["stationID", "站点类型"]], on="stationID")
+    prof = (merged.groupby(["站点类型", "isWorkday", "hour"])[["inFlow", "outFlow"]]
               .mean().reset_index())
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), dpi=150, sharex=True)
-    for t, sub in prof.groupby("站点类型"):
-        axes[0].plot(sub["hour"], sub["inFlow"], marker="o", ms=3, label=t)
-        axes[1].plot(sub["hour"], sub["outFlow"], marker="o", ms=3, label=t)
-    axes[0].set_title("工作日平均分时进站客流")
-    axes[1].set_title("工作日平均分时出站客流")
-    for ax in axes:
-        ax.set_xlabel("小时")
-        ax.set_ylabel("平均客流量（人次/小时）")
-        ax.legend(fontsize=8)
-    fig.suptitle("各类型站点簇的工作日分时客流画像")
-    fig.tight_layout()
+    fig, axes = plt.subplots(2, 2, figsize=(12.5, 9), dpi=150,
+                             sharex="col", sharey="col")
+    titles = {(0, 0): "工作日 · 进站", (0, 1): "工作日 · 出站",
+              (1, 0): "周末/节假日 · 进站", (1, 1): "周末/节假日 · 出站"}
+    for (row, flag) in [(0, 1), (1, 0)]:
+        sub = prof[prof["isWorkday"] == flag]
+        for col, flow in [(0, "inFlow"), (1, "outFlow")]:
+            ax = axes[row, col]
+            for t, color in TYPE_COLORS.items():
+                s = sub[sub["站点类型"] == t].sort_values("hour")
+                ax.plot(s["hour"], s[flow], marker="o", ms=3,
+                        color=color, label=t)
+            ax.set_title(titles[(row, col)], fontsize=11)
+            ax.set_xlabel("小时", fontsize=9)
+            ax.set_ylabel("平均客流量（人次/小时）", fontsize=9)
+            ax.tick_params(labelsize=8)
+    axes[0, 0].legend(fontsize=8, loc="upper right")
+    fig.suptitle("各类型站点簇的分时客流画像（工作日 / 周末）", fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
     fig.savefig(OUT_DIR / "图3_各簇分时客流画像.png")
     plt.close(fig)
 
@@ -299,7 +327,7 @@ def main() -> None:
     print(stat.to_string())
 
     print("\n[6/6] 绘图输出...")
-    plot_pca(Xs, result)
+    kl = plot_tsne(Xs, result, sil)
     plot_profiles(result, agg)
 
     # 自动生成带真实数字的分析结论草稿
@@ -311,7 +339,9 @@ def main() -> None:
              f"（{sil_k.max():.4f}）；结合分工要求的 5 类站点类型，最终取 K={FINAL_K}，"
              f"轮廓系数 {sil:.4f}。",
              f"- SSE 从 K=3 的 {kdf.loc[kdf['K'] == 3, 'SSE'].iloc[0]:.0f} "
-             f"下降到 K=8 的 {kdf.loc[kdf['K'] == 8, 'SSE'].iloc[0]:.0f}，K>5 后下降趋缓（肘部）。\n"]
+             f"下降到 K=8 的 {kdf.loc[kdf['K'] == 8, 'SSE'].iloc[0]:.0f}，K>5 后下降趋缓（肘部）。",
+             f"- 图2 采用 t-SNE（perplexity=30）非线性降维可视化，KL 散度 {kl:.4f}；"
+             f"另可运行 code/分工5/cluster_geo_map.py 生成站点聚类地理分布气泡图（图6）。\n"]
     for t, row in stat.iterrows():
         top = (result[result["站点类型"] == t]
                .nlargest(5, "日均总客流")["name"].tolist())

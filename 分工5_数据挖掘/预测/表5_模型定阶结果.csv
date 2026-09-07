@@ -1,3 +1,6 @@
-﻿站点,普通ARIMA最优,季节SARIMA最优
-People's Square(人民广场·枢纽),"ARIMA(3, 0, 3)","SARIMA(1, 0, 2)x(1, 1, 1, 17)"
-Xinzhuang(莘庄·通勤),"ARIMA(3, 0, 3)","SARIMA(1, 0, 2)x(1, 1, 1, 17)"
+﻿站点,站点类型,普通ARIMA最优,季节SARIMA最优
+人民广场(People's Square·综合枢纽站),综合枢纽站,"ARIMA(3, 0, 3)","SARIMA(1, 0, 2)x(1, 1, 1, 17)"
+金科路(Jinke Road·就业办公站),就业办公站,"ARIMA(3, 0, 3)","SARIMA(1, 0, 2)x(1, 1, 1, 17)"
+芦恒路(Luheng Road·通勤居住站),通勤居住站,"ARIMA(2, 0, 3)","SARIMA(1, 0, 2)x(1, 1, 1, 17)"
+中华艺术宫(China Art Museum·休闲商圈站),休闲商圈站,"ARIMA(3, 0, 2)","SARIMA(1, 0, 2)x(1, 1, 1, 17)"
+罗山路(Luoshan Road·郊区低频站点),郊区低频站点,"ARIMA(2, 0, 3)","SARIMA(2, 0, 2)x(1, 1, 1, 17)"
