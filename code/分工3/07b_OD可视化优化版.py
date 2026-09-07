@@ -14,7 +14,8 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, Normalize
+from matplotlib.cm import ScalarMappable
 from matplotlib.patches import FancyArrowPatch
 import geopandas as gpd
 from pyproj import Transformer
@@ -118,8 +119,11 @@ flow_vals = top15["Flow"].values
 p95 = np.percentile(flow_vals, 95)
 linewidths = 1.5 + (np.clip(flow_vals, None, p95) / p95) * 7
 
-# 颜色从浅到深
-colors = plt.cm.YlOrRd(np.linspace(0.3, 0.9, len(top15)))
+# 颜色按实际客流量映射（YlOrRd），并创建colorbar
+norm = Normalize(vmin=flow_vals.min(), vmax=flow_vals.max())
+sm = ScalarMappable(cmap="YlOrRd", norm=norm)
+sm.set_array([])
+colors = sm.to_rgba(flow_vals)
 
 for idx, (_, r) in enumerate(top15.iterrows()):
     ox, oy = trans.transform(r["o_lon"], r["o_lat"])
@@ -146,6 +150,10 @@ for idx, (_, r) in enumerate(top15.iterrows()):
 # 绘制站点
 station_geo.plot(ax=ax, color="#2c3e50", markersize=25, zorder=4, alpha=0.7)
 ax.autoscale()
+
+# 添加客流量颜色条
+cbar = fig.colorbar(sm, ax=ax, shrink=0.6, pad=0.02)
+cbar.set_label("OD客流量（人次）", fontsize=12)
 
 ax.set_title("上海地铁TOP15 OD客流流向图（带箭头，线宽=客流量级）", fontsize=15, pad=15, fontweight="bold")
 ax.set_axis_off()
