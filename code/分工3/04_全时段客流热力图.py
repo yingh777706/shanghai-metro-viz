@@ -35,13 +35,13 @@ station_geo = gpd.read_file(geo_path).to_crs(epsg=3857)
 flow = station_geo["全天总客流"].values
 p95 = np.percentile(flow, 95)
 size_clipped = np.clip(flow, None, p95)
-markersize = 20 + (size_clipped / p95) * 280  # 20~300 范围
+markersize = 5 + (size_clipped / p95) * 80  # 5~85 范围，避免重叠糊在一起
 
 fig, ax = plt.subplots(figsize=(14, 12), dpi=300)
 
 station_geo.plot(
     ax=ax, column="全天总客流", cmap=CMAP_FLOW,
-    markersize=markersize, alpha=0.8,
+    markersize=markersize, alpha=0.55,
     legend=True, legend_kwds={"shrink": 0.6, "label": "全天客流量（人次）"}
 )
 ctx.add_basemap(ax, source=AMAP_URL, zoom=11)
